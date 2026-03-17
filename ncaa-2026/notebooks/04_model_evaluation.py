@@ -8,6 +8,10 @@
 
 # COMMAND ----------
 
+# MAGIC %pip install scikit-learn matplotlib mlflow --quiet
+
+# COMMAND ----------
+
 import mlflow
 import numpy as np
 import pandas as pd
@@ -39,7 +43,7 @@ model = mlflow.pyfunc.load_model(f"runs:/{best_run_id}/model")
 # COMMAND ----------
 
 # DBTITLE 1,Prepare 2025 Holdout Data
-holdout = spark.table(f"{CATALOG}.{SCHEMA}.automl_training_data").filter("Season = 2025")
+holdout = spark.table(f"{CATALOG}.{SCHEMA}.training_features").filter("Season = 2025")
 
 holdout_pd = holdout.toPandas()
 print(f"2025 tournament games: {len(holdout_pd)}")

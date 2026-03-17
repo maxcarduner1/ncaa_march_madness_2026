@@ -3,6 +3,7 @@
 # MAGIC # NCAA March Madness 2026 - Data Ingestion
 # MAGIC
 # MAGIC Unzips pre-uploaded competition data from UC Volume and loads into Delta tables.
+# MAGIC Skips assets that already exist unless `FORCE_RERUN = True`.
 # MAGIC
 # MAGIC **Catalog:** `serverless_stable_82l7qq_catalog`
 # MAGIC **Schema:** `march_madness_2026`
@@ -10,48 +11,76 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Setup Unity Catalog Namespace
+# DBTITLE 1,Config
 CATALOG = "serverless_stable_82l7qq_catalog"
-SCHEMA = "march_madness_2026"
-VOLUME = "raw_data"
+SCHEMA  = "march_madness_2026"
+VOLUME  = "raw_data"
 
+# Set True to re-unzip and overwrite all tables even if they already exist
+FORCE_RERUN = False
+
+# COMMAND ----------
+
+# DBTITLE 1,Setup Unity Catalog Namespace
 spark.sql(f"USE CATALOG {CATALOG}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA}")
 spark.sql(f"USE SCHEMA {SCHEMA}")
 spark.sql(f"CREATE VOLUME IF NOT EXISTS {VOLUME}")
 
 volume_path = f"/Volumes/{CATALOG}/{SCHEMA}/{VOLUME}"
-zip_path = f"{volume_path}/march-machine-learning-mania-2026.zip"
+zip_path    = f"{volume_path}/march-machine-learning-mania-2026.zip"
 print(f"Volume path: {volume_path}")
 print(f"Zip path:    {zip_path}")
 
 # COMMAND ----------
 
-# DBTITLE 1,Unzip Competition Data into Volume
-import subprocess, os
+# DBTITLE 1,Collect Existing Assets
+import os
 
-# Verify zip exists
-assert os.path.exists(zip_path), (
-    f"Zip not found at {zip_path}.\n"
-    "Upload it first with:\n"
-    f"  databricks fs cp march-machine-learning-mania-2026.zip dbfs:{zip_path} --profile sandbox"
-)
+existing_tables = {
+    row.tableName
+    for row in spark.sql(f"SHOW TABLES IN {CATALOG}.{SCHEMA}").collect()
+}
+print(f"Tables already in schema: {len(existing_tables)}")
+if existing_tables:
+    for t in sorted(existing_tables):
+        print(f"  • {t}")
 
-result = subprocess.run(
-    ["unzip", "-o", zip_path, "-d", volume_path],
-    capture_output=True,
-    text=True,
-)
-print(result.stdout[-3000:] if len(result.stdout) > 3000 else result.stdout)
-if result.returncode != 0:
-    print("STDERR:", result.stderr)
-    raise RuntimeError(f"unzip failed (exit {result.returncode})")
+# Check whether CSVs are already extracted by probing a key file
+KEY_CSV = f"{volume_path}/MTeams.csv"
+csvs_extracted = os.path.exists(KEY_CSV)
+print(f"\nCSVs already extracted: {csvs_extracted}")
 
 # COMMAND ----------
 
-# DBTITLE 1,List Extracted CSV Files
+# DBTITLE 1,Unzip Competition Data into Volume
+import subprocess
+
+if csvs_extracted and not FORCE_RERUN:
+    print("✓ CSVs already present in volume — skipping unzip")
+    print("  (Set FORCE_RERUN = True to force re-extract)")
+else:
+    assert os.path.exists(zip_path), (
+        f"Zip not found at {zip_path}.\n"
+        "Upload it first with:\n"
+        f"  databricks fs cp march-machine-learning-mania-2026.zip dbfs:{zip_path} --profile sandbox"
+    )
+    print(f"Extracting {zip_path} …")
+    result = subprocess.run(
+        ["unzip", "-o", zip_path, "-d", volume_path],
+        capture_output=True, text=True,
+    )
+    output = result.stdout
+    print(output[-3000:] if len(output) > 3000 else output)
+    if result.returncode != 0:
+        print("STDERR:", result.stderr)
+        raise RuntimeError(f"unzip failed (exit {result.returncode})")
+
+# COMMAND ----------
+
+# DBTITLE 1,List CSV Files in Volume
 csv_files = [f for f in dbutils.fs.ls(f"dbfs:{volume_path}") if f.name.endswith(".csv")]
-print(f"Found {len(csv_files)} CSV files:")
+print(f"Found {len(csv_files)} CSV files in volume:")
 for f in sorted(csv_files, key=lambda x: x.name):
     print(f"  {f.name}  ({f.size:,} bytes)")
 
@@ -85,13 +114,19 @@ TABLE_MAP = {
     "SampleSubmissionStage2.csv":          "sample_submission_stage2",
 }
 
-skipped = []
+not_in_zip = []
 
 for csv_name, table_name in TABLE_MAP.items():
+    # Skip if table already exists (and not forcing rerun)
+    if table_name in existing_tables and not FORCE_RERUN:
+        print(f"  → {table_name} already exists, skipping")
+        continue
+
     csv_path = f"{volume_path}/{csv_name}"
     if not os.path.exists(csv_path):
-        skipped.append(csv_name)
+        not_in_zip.append(csv_name)
         continue
+
     try:
         df = (
             spark.read
@@ -105,8 +140,8 @@ for csv_name, table_name in TABLE_MAP.items():
     except Exception as e:
         print(f"  ✗ {csv_name}: {e}")
 
-if skipped:
-    print(f"\nSkipped (not in zip): {skipped}")
+if not_in_zip:
+    print(f"\nNot found in zip: {not_in_zip}")
 
 # COMMAND ----------
 
