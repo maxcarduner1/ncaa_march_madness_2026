@@ -336,7 +336,22 @@ if missing_teams:
 
 # Align to exact model signature column order, filling any gaps with 0
 features_df = pd.DataFrame(feature_rows).reindex(columns=MODEL_FEATURE_COLS, fill_value=0.0)
-print(f"Feature matrix: {features_df.shape} — ready for prediction")
+
+# Enforce dtypes to match model signature (long→int64, integer→int32, double→float64)
+for inp in sig_inputs:
+    col = inp.name
+    if col not in features_df.columns:
+        continue
+    type_str = str(inp.type)
+    if "long" in type_str:
+        features_df[col] = features_df[col].fillna(0).round().astype("int64")
+    elif "integer" in type_str:
+        features_df[col] = features_df[col].fillna(0).round().astype("int32")
+    else:
+        features_df[col] = features_df[col].fillna(0.0).astype("float64")
+
+print(f"Feature matrix: {features_df.shape} (rows x cols) — ready for prediction")
+print(f"Sample columns: {list(features_df.columns[:6])} ...")
 
 # COMMAND ----------
 
