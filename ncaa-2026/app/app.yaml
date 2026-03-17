@@ -1,0 +1,17 @@
+command:
+  - "python"
+  - "-m"
+  - "uvicorn"
+  - "app:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+
+env:
+  - name: DATABRICKS_WAREHOUSE_HTTP_PATH
+    value: /sql/1.0/warehouses/aa2256da874c652c
+  - name: UC_CATALOG
+    value: serverless_stable_82l7qq_catalog
+  - name: UC_SCHEMA
+    value: march_madness_2026

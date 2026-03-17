@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+*.egg-info/
+dist/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Keep frontend/dist for deployment
+# app/frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Databricks
+.databricks/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.whl
+
+# Secrets - never commit
+kaggle.json

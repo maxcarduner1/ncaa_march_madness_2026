@@ -1,0 +1,56 @@
+resources:
+  jobs:
+    ncaa_ml_pipeline:
+      name: "ncaa-march-madness-2026-pipeline"
+      description: "End-to-end ML pipeline for NCAA March Madness 2026 predictions"
+      tags:
+        project: "march-madness-2026"
+      tasks:
+        - task_key: "01_data_ingestion"
+          notebook_task:
+            notebook_path: ../notebooks/01_data_ingestion.py
+            source: WORKSPACE
+          environment_key: serverless
+
+        - task_key: "02_feature_engineering"
+          depends_on:
+            - task_key: "01_data_ingestion"
+          notebook_task:
+            notebook_path: ../notebooks/02_feature_engineering.py
+            source: WORKSPACE
+          environment_key: serverless
+
+        - task_key: "03_automl_training"
+          depends_on:
+            - task_key: "02_feature_engineering"
+          notebook_task:
+            notebook_path: ../notebooks/03_automl_training.py
+            source: WORKSPACE
+          environment_key: serverless
+
+        - task_key: "04_model_evaluation"
+          depends_on:
+            - task_key: "03_automl_training"
+          notebook_task:
+            notebook_path: ../notebooks/04_model_evaluation.py
+            source: WORKSPACE
+          environment_key: serverless
+
+        - task_key: "05_generate_predictions"
+          depends_on:
+            - task_key: "04_model_evaluation"
+          notebook_task:
+            notebook_path: ../notebooks/05_generate_predictions.py
+            source: WORKSPACE
+          environment_key: serverless
+
+      environments:
+        - environment_key: serverless
+          spec:
+            client: "1"
+            dependencies:
+              - kaggle
+              - scikit-learn
+              - pandas
+              - numpy
+              - mlflow

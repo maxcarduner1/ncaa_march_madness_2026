@@ -1,0 +1,11 @@
+resources:
+  apps:
+    ncaa_bracket_app:
+      name: "ncaa-bracket-2026"
+      description: "NCAA March Madness 2026 Bracket Prediction App"
+      source_code_path: ../app
+      resources:
+        - name: "sql-warehouse"
+          sql_warehouse:
+            id: aa2256da874c652c
+            permission: "CAN_USE"

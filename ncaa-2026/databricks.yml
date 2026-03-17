@@ -1,0 +1,19 @@
+bundle:
+  name: ncaa-march-madness-2026
+
+workspace:
+  profile: sandbox
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    workspace:
+      host: https://fevm-serverless-stable-82l7qq.cloud.databricks.com
+
+  prod:
+    mode: production
+    workspace:
+      host: https://fevm-serverless-stable-82l7qq.cloud.databricks.com
