@@ -47,10 +47,4 @@ resources:
       environments:
         - environment_key: serverless
           spec:
-            client: "1"
-            dependencies:
-              - kaggle
-              - scikit-learn
-              - pandas
-              - numpy
-              - mlflow
+            client: "5"

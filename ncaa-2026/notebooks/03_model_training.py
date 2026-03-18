@@ -39,7 +39,7 @@ spark.sql(f"USE SCHEMA {SCHEMA}")
 
 EXPERIMENT_NAME = (
     f"/Users/{spark.sql('SELECT current_user()').first()[0]}"
-    f"/march_madness_2026_training"
+    f"/march_madness_2026_training_v2"
 )
 mlflow.set_experiment(EXPERIMENT_NAME)
 print(f"MLflow experiment: {EXPERIMENT_NAME}")
