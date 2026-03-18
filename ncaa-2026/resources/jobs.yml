@@ -20,17 +20,17 @@ resources:
             source: WORKSPACE
           environment_key: serverless
 
-        - task_key: "03_automl_training"
+        - task_key: "03_model_training"
           depends_on:
             - task_key: "02_feature_engineering"
           notebook_task:
-            notebook_path: ../notebooks/03_automl_training.py
+            notebook_path: ../notebooks/03_model_training.py
             source: WORKSPACE
           environment_key: serverless
 
         - task_key: "04_model_evaluation"
           depends_on:
-            - task_key: "03_automl_training"
+            - task_key: "03_model_training"
           notebook_task:
             notebook_path: ../notebooks/04_model_evaluation.py
             source: WORKSPACE

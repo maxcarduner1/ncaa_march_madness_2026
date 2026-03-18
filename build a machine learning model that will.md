@@ -1,4 +1,4 @@
-build a machine learning model that will help me predict my bracket this year, using databricks automl
+build a machine learning model that will help me predict my bracket this year
 use my databricks sandbox workspace (serverless-stable-82l7qq) and mlflow best practices for experiment tracking
 see how to download data and descriptions of data: https://www.kaggle.com/competitions/march-machine-learning-mania-2026/data
 create a new UC Schema in the serverless_stable_82l7qq_catalog catalog called "march_madness_2026" and download all the csvs into a volume in here, convert only the ones you need to tables in the same schema

@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # NCAA March Madness 2026 - Model Evaluation
 # MAGIC
-# MAGIC Evaluates the best AutoML model on the 2025 tournament holdout set.
+# MAGIC Evaluates the best model on the 2025 tournament holdout set.
 # MAGIC Calculates log_loss, accuracy, Brier score, and compares vs baselines.
 # MAGIC Registers the best model in Unity Catalog Model Registry.
 

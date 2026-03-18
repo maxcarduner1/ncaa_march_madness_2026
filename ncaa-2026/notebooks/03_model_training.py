@@ -4,7 +4,7 @@
 # MAGIC
 # MAGIC Trains three model families (XGBoost, Random Forest, Logistic Regression) across
 # MAGIC a defined hyperparameter grid. Every trial is tracked in MLflow. The best model
-# MAGIC by validation log-loss is saved to `automl_best_run` for notebooks 04 and 05.
+# MAGIC by validation log-loss is saved to `automl_best_run` (best run table) for notebooks 04 and 05.
 # MAGIC
 # MAGIC **Train:** seasons 2003–2022
 # MAGIC **Validation:** seasons 2023–2024

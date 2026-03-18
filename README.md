@@ -1,6 +1,6 @@
 # NCAA March Madness 2026 – Bracket Prediction
 
-Machine learning pipeline to predict NCAA March Madness brackets using **Databricks AutoML**, MLflow experiment tracking, and a Databricks App to showcase predictions.
+Machine learning pipeline to predict NCAA March Madness brackets using **manual ML** (XGBoost, Random Forest, Logistic Regression), MLflow experiment tracking, and a Databricks App to showcase predictions.
 
 ## Overview
 
@@ -13,7 +13,7 @@ Machine learning pipeline to predict NCAA March Madness brackets using **Databri
 | Path | Description |
 |------|-------------|
 | `ncaa-2026/` | Databricks Asset Bundle (notebooks, app, jobs) |
-| `ncaa-2026/notebooks/` | Pipeline: ingestion → features → AutoML → evaluation → predictions |
+| `ncaa-2026/notebooks/` | Pipeline: ingestion → features → model training → evaluation → predictions |
 | `ncaa-2026/app/` | Databricks App (FastAPI + React) to view bracket and predictions |
 | `ncaa-2026/resources/` | Bundle resources (jobs, app config) |
 
@@ -21,7 +21,7 @@ Machine learning pipeline to predict NCAA March Madness brackets using **Databri
 
 1. **01_data_ingestion.py** – Unzip data from UC volume, create schema/volume, load CSVs into Delta tables.
 2. **02_feature_engineering.py** – Build features for training and submission format.
-3. **03_automl_training.py** – Train models with Databricks AutoML; track runs in MLflow.
+3. **03_model_training.py** – Train XGBoost, Random Forest, and Logistic Regression with hyperparameter search; track runs in MLflow.
 4. **04_model_evaluation.py** – Evaluate on a holdout set and select best model.
 5. **05_generate_predictions.py** – Generate Stage 1 / Stage 2 submission-ready predictions.
 
