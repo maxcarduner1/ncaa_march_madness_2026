@@ -25,7 +25,7 @@ spark.sql(f"USE CATALOG {CATALOG}")
 spark.sql(f"USE SCHEMA {SCHEMA}")
 
 # Set True to recompute all features even if the output tables already exist
-FORCE_RERUN = False
+FORCE_RERUN = True
 
 # COMMAND ----------
 
@@ -350,6 +350,30 @@ elif not SKIP_COMPUTE:
 
 # COMMAND ----------
 
+# DBTITLE 1,Rows Per Season & Null Column Audit
+# --- Rows per season ---
+rows_per_season = (
+    team_features
+    .groupBy("Season")
+    .agg(F.count("*").alias("row_count"))
+    .orderBy("Season")
+)
+display(rows_per_season)
+
+# --- Columns with nulls ---
+null_counts = team_features.select(
+    [F.sum(F.col(c).isNull().cast("int")).alias(c) for c in team_features.columns]
+)
+null_df = null_counts.toPandas().T.rename(columns={0: "null_count"})
+null_df = null_df[null_df["null_count"] > 0]
+if null_df.empty:
+    print("No columns contain nulls")
+else:
+    print(f"{len(null_df)} column(s) with nulls:")
+    display(spark.createDataFrame(null_df.reset_index().rename(columns={"index": "column"})))
+
+# COMMAND ----------
+
 # DBTITLE 1,Build Pairwise Matchup Training Data
 if SKIP_COMPUTE:
     print("✓ training_features already exists — loading from table")
@@ -387,9 +411,101 @@ else:
 
 # COMMAND ----------
 
+# DBTITLE 1,Training Features: Rows & Null Columns by Season
+# --- Rows per season ---
+train_rows_per_season = (
+    training_data
+    .groupBy("Season")
+    .agg(F.count("*").alias("row_count"))
+    .orderBy("Season")
+)
+display(train_rows_per_season)
+
+# --- Null column count per season ---
+null_cols = [c for c in training_data.columns if c != "Season"]
+null_by_season = (
+    training_data
+    .groupBy("Season")
+    .agg(*[
+        F.sum(F.col(c).isNull().cast("int")).alias(c)
+        for c in null_cols
+    ])
+    .orderBy("Season")
+)
+
+# Unpivot to long format: one row per (Season, column) with null_count > 0
+stack_expr = ", ".join([f"'{c}', `{c}`" for c in null_cols])
+null_long = (
+    null_by_season
+    .selectExpr("Season", f"stack({len(null_cols)}, {stack_expr}) as (column_name, null_count)")
+    .filter("null_count > 0")
+    .orderBy("Season", F.desc("null_count"))
+)
+
+if null_long.count() == 0:
+    print("No columns contain nulls in training_data")
+else:
+    # Also show count of columns with nulls per season
+    cols_with_nulls = null_long.groupBy("Season").agg(F.count("*").alias("columns_with_nulls")).orderBy("Season")
+    display(cols_with_nulls)
+    display(null_long)
+
+# COMMAND ----------
+
 # DBTITLE 1,Feature Summary Statistics
 display(
     training_data
     .select(*[c for c in training_data.columns if c.startswith("diff_")])
     .summary("count", "mean", "stddev", "min", "max")
 )
+
+# COMMAND ----------
+
+# DBTITLE 1,Build 2026 Scoring Features (All Possible Matchups)
+# --- Parse matchups from sample_submission_stage2 ---
+submission = spark.table(f"{CATALOG}.{SCHEMA}.sample_submission_stage2")
+
+all_matchups = (
+    submission
+    .withColumn("parts", F.split("ID", "_"))
+    .select(
+        F.col("parts")[0].cast("int").alias("Season"),
+        F.col("parts")[1].cast("int").alias("TeamA"),
+        F.col("parts")[2].cast("int").alias("TeamB"),
+    )
+)
+print(f"Matchups from submission file: {all_matchups.count():,}")
+
+# --- Reuse same feature columns as training data ---
+feature_cols = [c for c in team_features.columns if c not in ("Season", "TeamID", "Seed", "seed_region")]
+
+fa = (
+    team_features.filter(F.col("Season") == 2026)
+    .select("TeamID", *[F.col(c).alias(f"a_{c}") for c in feature_cols])
+    .withColumnRenamed("TeamID", "TeamA")
+)
+fb = (
+    team_features.filter(F.col("Season") == 2026)
+    .select("TeamID", *[F.col(c).alias(f"b_{c}") for c in feature_cols])
+    .withColumnRenamed("TeamID", "TeamB")
+)
+
+scoring_data = all_matchups.join(fa, "TeamA", "left").join(fb, "TeamB", "left")
+
+# Compute diff features identical to training pipeline
+for c in feature_cols:
+    scoring_data = scoring_data.withColumn(
+        f"diff_{c}",
+        F.coalesce(F.col(f"a_{c}"), F.lit(0)) - F.coalesce(F.col(f"b_{c}"), F.lit(0)),
+    )
+
+scoring_data = scoring_data.fillna(0)
+print(f"Scoring features: {scoring_data.count():,} rows × {len(scoring_data.columns)} cols")
+
+scoring_data.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(
+    f"{CATALOG}.{SCHEMA}.scoring_features"
+)
+print(f"Saved → {CATALOG}.{SCHEMA}.scoring_features")
+
+# COMMAND ----------
+
